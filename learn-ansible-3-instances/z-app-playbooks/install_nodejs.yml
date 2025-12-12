@@ -1,0 +1,28 @@
+---
+
+- name: install nodejs play
+
+  hosts: web
+
+  gather_facts: yes
+
+  become: true
+
+  tasks:
+
+  - name: install gpg key for nodejs
+    apt_key:
+      url: https://deb.nodesource.com/gpgkey/nodesource.gpg.key
+      state: present
+
+  #install nodejs 
+  - name: Install Node.js (v20.x)
+    ansible.builtin.shell: |
+        curl -sL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    args:
+      creates: /etc/apt/sources.list.d/nodesource.list
+
+  - name: Install NodeJS package
+    apt:
+      name: nodejs
+      state: present

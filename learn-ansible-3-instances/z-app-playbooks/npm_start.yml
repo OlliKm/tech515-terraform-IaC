@@ -1,0 +1,9 @@
+---
+
+- name: npm install
+
+  hosts: web
+
+  gather_facts: yes
+
+  

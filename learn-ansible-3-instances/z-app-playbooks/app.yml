@@ -1,0 +1,88 @@
+---
+
+# name the play
+- name: install all app dependencies 
+
+# where do we want to run this play
+  hosts: web
+ # get comprehensive facts  
+  gather_facts: yes
+  # provide super user access
+  become: true
+
+  tasks: 
+
+  - name: update apt cache
+    ansible.builtin.apt:
+      update_cache: yes
+
+  - name: upgrade all packages
+    ansible.builtin.apt:
+      upgrade: dist
+
+
+  - name: install nginx
+    apt: pkg=nginx state=present
+
+  - name: Update Nginx reverse proxy to point to Node app
+    ansible.builtin.replace:
+      path: /etc/nginx/sites-available/default
+      regexp: 'try_files\s+\$uri\s+\$uri/ =404;'
+      replace: 'proxy_pass http://127.0.0.1:3000;'
+
+  - name: restart nginx
+    ansible.builtin.service:
+      name: nginx
+      state: restarted
+
+
+
+
+  #install gpg key
+  - name: install gpg key for nodejs
+    apt_key:
+      url: https://deb.nodesource.com/gpgkey/nodesource.gpg.key
+      state: present
+
+  #install nodejs 
+  - name: Install Node.js (v20.x)
+    ansible.builtin.shell: |
+        curl -sL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    args:
+      creates: /etc/apt/sources.list.d/nodesource.list
+  #node js package
+  - name: Install NodeJS package
+    apt:
+      name: nodejs
+      state: present
+    
+  - name: install PM2 globally
+    ansible.builtin.npm:
+      name: pm2
+      global: yes
+
+  # repo clone 
+  - name: clone the github repo
+    ansible.builtin.git:
+      repo: 'https://github.com/OlliKm/tech515_sparta_app_to_clone.git'
+      dest: /home/ubuntu/repo
+      force: yes
+      update: yes
+
+#npm install and run 
+  - name: npm install
+    npm:
+      path: /home/ubuntu/repo/app
+      state: present
+
+
+  - name: start Node app with PM2
+    ansible.builtin.shell: pm2 start app.js 
+    args:
+      chdir: /home/ubuntu/repo/app
+
+  - name: npm start
+    ansible.builtin.shell: 'npm start'
+    args:
+      chdir: /home/ubuntu/repo/app
+

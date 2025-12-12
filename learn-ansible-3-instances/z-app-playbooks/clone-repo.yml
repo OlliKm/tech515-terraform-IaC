@@ -1,0 +1,21 @@
+---
+
+- name: clone github repo play
+
+  hosts: web
+
+  gather_facts: yes
+
+  become: true
+
+  tasks:
+  - name: clone the github repo
+    ansible.builtin.git:
+      repo: 'https://github.com/OlliKm/tech515_sparta_app_to_clone.git'
+      dest: 'repo'
+      force: yes
+      update: yes
+
+      
+  
+  
