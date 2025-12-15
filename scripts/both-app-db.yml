@@ -1,10 +1,52 @@
 ---
+- name: install mongo db v7
+  hosts: db
+  become: yes
+
+  gather_facts: yes
+
+  tasks:
+  - name: import Mongo DB public key
+    ansible.builtin.apt_key:
+      url: https://www.mongodb.org/static/pgp/server-7.0.asc
+      state: present
+
+  - name: Add the MongoDB repository
+    ansible.builtin.apt_repository:
+      # "ansible_distribution_release" gets value of Ubuntu's codename which was set by "gather_facts: yes" above
+      # it gets the same value as the command "lsb_release -cs" e.g. "jammy"
+      repo: "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/7.0 multiverse"
+      state: present
+      update_cache: yes
+  
+  - name: Install MongoDB 7.0.6
+    ansible.builtin.apt:
+      name: mongodb-org=7.0.6
+      # this makes sure it is installed, but not running
+      state: present
+      update_cache: yes
+
+  - name: configure BindIp
+    ansible.builtin.replace:
+      path: /etc/mongod.conf
+      regexp: 'bindIp: 127.0.0.1'
+      replace: 'bindIp: 0.0.0.0'
+
+  - name: restart mongodb
+    ansible.builtin.service:
+      name: mongod 
+      state: restarted 
+
+# app 
 
 # name the play
 - name: install all app dependencies 
 
 # where do we want to run this play
   hosts: web
+  #environment
+  environment:
+    DB_HOST: "mongodb://172.31.56.26:27017/posts"
  # get comprehensive facts  
   gather_facts: yes
   # provide super user access
@@ -35,9 +77,6 @@
       name: nginx
       state: restarted
 
-
-
-
   #install gpg key
   - name: install gpg key for nodejs
     apt_key:
@@ -63,26 +102,30 @@
 
   # repo clone 
   - name: clone the github repo
+    become: false
     ansible.builtin.git:
       repo: 'https://github.com/OlliKm/tech515_sparta_app_to_clone.git'
       dest: /home/ubuntu/repo
       force: yes
       update: yes
 
+
 #npm install and run 
   - name: npm install
+    become: false
     npm:
       path: /home/ubuntu/repo/app
       state: present
 
+  - name: stop PM2
+    become: false
+    command: pm2 stop all
 
   - name: start Node app with PM2
-    ansible.builtin.shell: pm2 start app.js 
-    args:
-      chdir: /home/ubuntu/repo/app
-
-  - name: npm start
-    ansible.builtin.shell: 'npm start'
+    become: false
+    #shell: |
+      #DB_HOST="mongodb://172.31.56.26:27017/posts" pm2 start app.js
+    command: pm2 start app.js
     args:
       chdir: /home/ubuntu/repo/app
 
